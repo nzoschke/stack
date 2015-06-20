@@ -401,11 +401,7 @@ type Tag struct {
 	Value string `json:"Value,omitempty"`
 }
 
-type Resources map[string]ResourceType
-
-type ResourceType struct {
-	Key string
-}
+type Resources map[string]interface{}
 
 func ref(i interface{}) Hash {
 	return Hash{"Ref": i}
