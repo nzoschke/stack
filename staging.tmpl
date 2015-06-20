@@ -1,0 +1,370 @@
+{{ define "formation" }}
+  {
+    "AWSTemplateFormatVersion" : "2010-09-09",
+    "Conditions": {
+      {{ template "process-conditions" . }}
+      "BlankCluster": { "Fn::Equals": [ { "Ref": "Cluster" }, "" ] }
+    },
+    "Parameters" : {
+      {{ template "balancer-params" . }}
+      {{ template "process-params" . }}
+
+      "Cluster": {
+        "Type" : "String",
+        "Default" : "",
+        "Description" : ""
+      },
+      "Environment": {
+        "Type": "String",
+        "Default": "",
+        "Description": ""
+      },
+      "Key": {
+        "Type": "String",
+        "Default": "",
+        "Description": ""
+      },
+      "Kernel": {
+        "Type" : "String",
+        "Default" : "",
+        "Description" : ""
+      },
+      "Release": {
+        "Type" : "String",
+        "Default" : "",
+        "Description" : ""
+      },
+      "Repository": {
+        "Type" : "String",
+        "Default" : "",
+        "Description" : "Source code repository"
+      },
+      "Subnets": {
+        "Type" : "List<AWS::EC2::Subnet::Id>",
+        "Default" : "",
+        "Description" : "VPC subnets for this app"
+      },
+      "VPC": {
+        "Type" : "AWS::EC2::VPC::Id",
+        "Default" : "",
+        "Description" : "VPC for this app"
+      }
+    },
+    "Resources": {
+      {{ template "balancer-resources" . }}
+      {{ template "process-resources" . }}
+    },
+    "Outputs": {
+      {{ template "balancer-outputs" . }}
+      {{ template "process-outputs" . }}
+
+      "Settings": {
+        "Value": { "Ref": "Settings" }
+      }
+    }
+  }
+{{ end }}
+
+{{ define "process-conditions" }}
+  {{ range $k, $e := . }}
+    "Blank{{ upper $k }}Service": { "Fn::Equals": [ { "Ref": "{{ upper $k }}Service" }, "" ] },
+  {{ end }}
+{{ end }}
+
+{{ define "process-params" }}
+  {{ range $k, $e := . }}
+    "{{ upper $k }}Command": {
+      "Type" : "String",
+      "Default" : "{{ command $e.Command }}",
+      "Description" : ""
+    },
+    "{{ upper $k }}Image": {
+      "Type" : "String",
+      "Default" : "",
+      "Description" : ""
+    },
+    "{{ upper $k }}Service": {
+      "Type" : "String",
+      "Default" : "",
+      "Description" : ""
+    },
+  {{ end }}
+{{ end }}
+
+{{ define "process-outputs" }}
+  {{ if .HasProcesses }}
+    "Kinesis": {
+      "Value": { "Ref": "Kinesis" }
+    },
+  {{ end }}
+{{ end }}
+
+{{ define "process-resources" }}
+  {{ if .HasProcesses }}
+    "Kinesis": {
+      "Type": "AWS::Kinesis::Stream",
+      "Properties": {
+        "ShardCount": 1
+      }
+    },
+    "LogsUser": {
+      "Type": "AWS::IAM::User",
+      "Properties": {
+        "Path": "/convox/",
+        "Policies": [
+          {
+            "PolicyName": "LogsRole",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [ "kinesis:PutRecords" ],
+                  "Resource": [ { "Fn::Join": [ "", [ "arn:aws:kinesis:*:*:stream/", { "Ref": "AWS::StackName" }, "-*" ] ] } ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "LogsAccess": {
+      "Type": "AWS::IAM::AccessKey",
+      "Properties": {
+        "Serial": "1",
+        "Status": "Active",
+        "UserName": { "Ref": "LogsUser" }
+      }
+    },
+    "TaskDefinition": {
+      "Type": "Custom::ECSTaskDefinition",
+      "Version": "1.0",
+      "Properties": {
+        "ServiceToken": { "Ref": "Kernel" },
+        "Name": { "Ref": "AWS::StackName" },
+        "Release": { "Ref": "Release" },
+        "Environment": { "Ref": "Environment" },
+        "Tasks": [
+          {{ tasks . }},
+          {
+            "Name": "convox-logs",
+            "Image": "index.docker.io/convox/logs",
+            "Environment": {
+              "AWS_REGION": { "Ref": "AWS::Region" },
+              "AWS_ACCESS": { "Ref": "LogsAccess" },
+              "AWS_SECRET": { "Fn::GetAtt": [ "LogsAccess", "SecretAccessKey" ] },
+              "KINESIS": { "Ref": "Kinesis" },
+              "CONTAINERS": { "Fn::Join": [ ",", [ {{ names . }} ] ] }
+            },
+            "CPU": "20",
+            "Memory": "64",
+            "Links": [ {{ links . }} ],
+            "Volumes": [
+              "/var/run/docker.sock:/var/run/docker.sock"
+            ]
+          }
+        ]
+      }
+    },
+    "Service": {
+      "Type": "Custom::ECSService",
+      "Version": "1.0",
+      "Properties": {
+        "ServiceToken": { "Ref": "Kernel" },
+        "Cluster": { "Ref": "Cluster" },
+        "DesiredCount": "1",
+        "Name": { "Ref": "AWS::StackName" },
+        "TaskDefinition": { "Ref": "TaskDefinition" },
+        "Role": { "Ref": "ServiceRole" },
+        "LoadBalancers": [ {{ loadbalancers . }} ]
+      }
+    },
+  {{ end }}
+{{ end }}
+
+{{ define "balancer-params" }}
+  {{ if .HasPorts }}
+    "Check": {
+      "Type": "String",
+      "Default": "HTTP:{{ .FirstRandom }}/",
+      "Description": ""
+    },
+    {{ range $ps, $entry := . }}
+      {{ range $i, $port := $entry.Ports }}
+        {{ $parts := (split $port ":") }}
+        "{{ upper $ps }}Port{{ index $parts 0 }}Balancer": {
+          "Type" : "String",
+          "Default" : "{{ index $parts 0 }}",
+          "Description" : ""
+        },
+        "{{ upper $ps }}Port{{ index $parts 0 }}Host": {
+          "Type" : "String",
+          "Default" : "{{ index $entry.Randoms $i }}",
+          "Description" : ""
+        },
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{ define "balancer-outputs" }}
+  {{ if .HasPorts }}
+    "BalancerHost": {
+      "Value": { "Fn::GetAtt": [ "Balancer", "DNSName" ] }
+    },
+  {{ end }}
+  {{ range $ps, $entry := . }}
+    {{ if $entry.HasPorts }}
+      {{ range $entry.Ports }}
+        {{ $parts := (split . ":") }}
+        "{{ upper $ps }}Port{{ index $parts 0 }}Balancer": {
+          "Value": { "Ref": "{{ upper $ps }}Port{{ index $parts 0 }}Balancer" }
+        },
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{ define "balancer-resources" }}
+  {{ if .HasPorts }}
+    "BalancerSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": { "Fn::Join": [ " ", [ { "Ref": "AWS::StackName" }, "-balancer" ] ] },
+        "SecurityGroupIngress": [ {{ ingress . }} ],
+        "VpcId": { "Ref": "VPC" }
+      }
+    },
+    "Balancer": {
+      "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Properties": {
+        "Subnets": { "Ref": "Subnets" },
+        "ConnectionDrainingPolicy": { "Enabled": true, "Timeout": 60 },
+        "ConnectionSettings": { "IdleTimeout": 60 },
+        "CrossZone": true,
+        "HealthCheck": {
+          "HealthyThreshold": "2",
+          "Interval": 5,
+          "Target": { "Ref": "Check" },
+          "Timeout": 3,
+          "UnhealthyThreshold": "2"
+        },
+        "Listeners": [ {{ listeners . }} ],
+        "LBCookieStickinessPolicy": [{ "PolicyName": "affinity" }],
+        "LoadBalancerName": { "Ref": "AWS::StackName" },
+        "SecurityGroups": [ { "Ref": "BalancerSecurityGroup" } ]
+      }
+    },
+  {{ end }}
+{{ end }}
+
+
+{{ define "security" }}
+  "ServiceRole": {
+    "Type": "AWS::IAM::Role",
+    "Properties": {
+      "AssumeRolePolicyDocument": {
+        "Statement": [
+          {
+            "Action": [
+              "sts:AssumeRole"
+            ],
+            "Effect": "Allow",
+            "Principal": {
+              "Service": [
+                "ecs.amazonaws.com"
+              ]
+            }
+          }
+        ],
+        "Version": "2012-10-17"
+      },
+      "Path": "/",
+      "Policies": [
+        {
+          "PolicyName": "ServiceRole",
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "elasticloadbalancing:Describe*",
+                  "elasticloadbalancing:DeregisterInstancesFromLoadBalancer",
+                  "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
+                  "ec2:Describe*",
+                  "ec2:AuthorizeSecurityGroupIngress"
+                ],
+                "Resource": [
+                  "*"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+{{ end }}
+
+{{ define "state" }}
+  "DynamoBuilds": {
+    "Type": "AWS::DynamoDB::Table",
+    "Properties": {
+      "TableName": { "Fn::Join": [ "-", [ { "Ref": "AWS::StackName" }, "builds" ] ] },
+      "AttributeDefinitions": [
+        { "AttributeName": "id", "AttributeType": "S" },
+        { "AttributeName": "app", "AttributeType": "S" },
+        { "AttributeName": "created", "AttributeType": "S" }
+      ],
+      "KeySchema": [ { "AttributeName": "id", "KeyType": "HASH" } ],
+      "GlobalSecondaryIndexes": [ {
+        "IndexName": "app.created",
+        "KeySchema": [ { "AttributeName": "app", "KeyType": "HASH" }, { "AttributeName": "created", "KeyType": "RANGE" } ],
+        "Projection": { "ProjectionType": "ALL" },
+        "ProvisionedThroughput": { "ReadCapacityUnits": "5", "WriteCapacityUnits": "5" }
+      }],
+      "ProvisionedThroughput": { "ReadCapacityUnits": "5", "WriteCapacityUnits": "5" }
+    }
+  },
+  "DynamoChanges": {
+    "Type": "AWS::DynamoDB::Table",
+    "Properties": {
+      "TableName": { "Fn::Join": [ "-", [ { "Ref": "AWS::StackName" }, "changes" ] ] },
+      "AttributeDefinitions": [
+        { "AttributeName": "app", "AttributeType": "S" },
+        { "AttributeName": "created", "AttributeType": "S" }
+      ],
+      "KeySchema": [ { "AttributeName": "app", "KeyType": "HASH" }, { "AttributeName": "created", "KeyType": "RANGE" } ],
+      "ProvisionedThroughput": { "ReadCapacityUnits": "5", "WriteCapacityUnits": "5" }
+    }
+  },
+  "DynamoReleases": {
+    "Type": "AWS::DynamoDB::Table",
+    "Properties": {
+      "TableName": { "Fn::Join": [ "-", [ { "Ref": "AWS::StackName" }, "releases" ] ] },
+      "AttributeDefinitions": [
+        { "AttributeName": "id", "AttributeType": "S" },
+        { "AttributeName": "app", "AttributeType": "S" },
+        { "AttributeName": "created", "AttributeType": "S" }
+      ],
+      "KeySchema": [ { "AttributeName": "id", "KeyType": "HASH" } ],
+      "GlobalSecondaryIndexes": [{
+        "IndexName": "app.created",
+        "KeySchema": [ { "AttributeName": "app", "KeyType": "HASH" }, { "AttributeName": "created", "KeyType": "RANGE" } ],
+        "Projection": { "ProjectionType": "ALL" },
+        "ProvisionedThroughput": { "ReadCapacityUnits": "5", "WriteCapacityUnits": "5" }
+      }],
+      "ProvisionedThroughput": { "ReadCapacityUnits": "5", "WriteCapacityUnits": "5" }
+    }
+  },
+  "Settings": {
+    "Type": "AWS::S3::Bucket",
+    "Properties": {
+      "AccessControl": "Private",
+      "Tags": [
+        { "Key": "system", "Value": "convox" },
+        { "Key": "app", "Value": { "Ref": "AWS::StackName" } }
+      ]
+    }
+  }
+{{ end }}
