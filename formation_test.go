@@ -29,19 +29,24 @@ func TestResources(t *testing.T) {
 	}
 	keys.Sort()
 
-	var want sort.StringSlice = []string{"DynamoBuilds", "DynamoChanges", "DynamoReleases", "ServiceRole", "Settings"}
+	cases := []struct {
+		got, want interface{}
+	}{
+		{[]string(keys), []string{"DynamoBuilds", "DynamoChanges", "DynamoReleases", "ServiceRole", "Settings"}},
 
-	if !reflect.DeepEqual(keys, want) {
-		t.Errorf("TestResources got %s, want %s", keys, want)
+		{(resources["DynamoBuilds"]).(map[string]interface{})["Type"], "AWS::DynamoDB::Table"},
+		{(resources["DynamoChanges"]).(map[string]interface{})["Type"], "AWS::DynamoDB::Table"},
+		{(resources["DynamoReleases"]).(map[string]interface{})["Type"], "AWS::DynamoDB::Table"},
+		{(resources["ServiceRole"]).(map[string]interface{})["Type"], "AWS::IAM::Role"},
+		{(resources["Settings"]).(map[string]interface{})["Type"], "AWS::S3::Bucket"},
 	}
 
-	s := (resources["Settings"]).(map[string]interface{})
-	got := s["Type"]
-	w := "AWS::S3::Bucket"
-
-	if got != w {
-		t.Errorf("TestResources got %s, want %s", keys, w)
+	for _, c := range cases {
+		if !reflect.DeepEqual(c.got, c.want) {
+			t.Errorf("TestResources got %q, want %q", c.got, c.want)
+		}
 	}
+
 }
 
 func TestCelery(t *testing.T) {
