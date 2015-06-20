@@ -53,6 +53,9 @@
     "Resources": {
       {{ template "balancer-resources" . }}
       {{ template "process-resources" . }}
+
+      {{ template "security" }}
+      {{ template "state" }}
     },
     "Outputs": {
       {{ template "balancer-outputs" . }}

@@ -237,10 +237,6 @@ type Template struct {
 	Resources                Resources
 }
 
-type Typer interface {
-	Type() string
-}
-
 type InternetGateway struct {
 }
 
@@ -339,7 +335,7 @@ func (r Resources) MarshalJSON() ([]byte, error) {
 			return nil, e
 		}
 		p := map[string]interface{}{
-			"Type": v.Type(),
+			"Type": v,
 		}
 		vj, e := json.Marshal(v)
 		if e != nil {
@@ -405,7 +401,11 @@ type Tag struct {
 	Value string `json:"Value,omitempty"`
 }
 
-type Resources map[string]Typer
+type Resources map[string]ResourceType
+
+type ResourceType struct {
+	Key string
+}
 
 func ref(i interface{}) Hash {
 	return Hash{"Ref": i}
