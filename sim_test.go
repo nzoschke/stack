@@ -36,3 +36,19 @@ func TestJoin(t *testing.T) {
 
 	_assert(t, cases)
 }
+
+func TestJoinRef(t *testing.T) {
+	var f interface{}
+	b := []byte(`{ "TableName": { "Fn::Join": [ "-", [ { "Ref": "AWS::StackName" }, "builds" ] ] } }`)
+	err := json.Unmarshal(b, &f)
+
+	if err != nil {
+		t.Errorf("Error %q", err)
+	}
+
+	cases := Cases{
+		{translate(f), map[string]string{"TableName": "teststack-builds"}},
+	}
+
+	_assert(t, cases)
+}

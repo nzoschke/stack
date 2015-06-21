@@ -1,7 +1,6 @@
 package formation
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 )
@@ -15,11 +14,42 @@ var dict = map[string]string{
 	"AWS::StackName":        "teststack",
 }
 
+func IsRef(obj reflect.Value) bool {
+	if obj.Type() != reflect.TypeOf(make(map[string]interface{})) {
+		return false
+	}
+
+	if len(obj.MapKeys()) != 1 {
+		return false
+	}
+
+	return obj.MapKeys()[0].String() == "Ref"
+}
+
+func RefValue(obj reflect.Value) string {
+	k := obj.MapKeys()[0]
+	v := obj.MapIndex(k)
+
+	return dict[v.Elem().String()]
+}
+
+func IsFnJoin(obj reflect.Value) bool {
+	if obj.Type() != reflect.TypeOf(make(map[string]interface{})) {
+		return false
+	}
+
+	if len(obj.MapKeys()) != 1 {
+		return false
+	}
+
+	return obj.MapKeys()[0].String() == "Fn::Join"
+}
+
 func translate(obj interface{}) interface{} {
 	// Wrap the original in a reflect.Value
 	original := reflect.ValueOf(obj)
 
-	fmt.Printf("TRANSLATE %+v (%+v)\n", obj, original.Type())
+	// fmt.Printf("TRANSLATE %+v (%+v)\n", obj, original.Type())
 
 	copy := reflect.New(original.Type()).Elem()
 	translateRecursive(copy, original)
@@ -29,7 +59,7 @@ func translate(obj interface{}) interface{} {
 }
 
 func translateRecursive(copy, original reflect.Value) {
-	fmt.Printf("%+v ; %+v\n", original, original.Type())
+	// fmt.Printf("%+v ; %+v\n", original, original.Type())
 
 	switch original.Kind() {
 	// The first cases handle nested structures and translate them recursively
@@ -57,15 +87,12 @@ func translateRecursive(copy, original reflect.Value) {
 		// Get rid of the wrapping interface
 		originalValue := original.Elem()
 
-		if originalValue.Type() == reflect.TypeOf(make(map[string]interface{})) && len(originalValue.MapKeys()) == 1 && originalValue.MapKeys()[0].String() == "Ref" {
-			k := originalValue.MapKeys()[0]
-			v := originalValue.MapIndex(k)
-
+		if IsRef(originalValue) {
 			copyValue := reflect.New(reflect.TypeOf("")).Elem()
-			copyValue.SetString(dict[v.Elem().String()])
+			copyValue.SetString(RefValue(originalValue))
 			translateRecursive(copyValue, copyValue)
 			copy.Set(copyValue)
-		} else if originalValue.Type() == reflect.TypeOf(make(map[string]interface{})) && len(originalValue.MapKeys()) == 1 && originalValue.MapKeys()[0].String() == "Fn::Join" {
+		} else if IsFnJoin(originalValue) {
 			k := originalValue.MapKeys()[0]
 			v := originalValue.MapIndex(k)
 
@@ -74,7 +101,13 @@ func translateRecursive(copy, original reflect.Value) {
 
 			p := make([]string, parts.Len())
 			for i := 0; i < parts.Len(); i++ {
-				p[i] = parts.Index(i).Elem().String()
+				e := parts.Index(i).Elem()
+
+				if IsRef(e) {
+					p[i] = RefValue(e)
+				} else {
+					p[i] = parts.Index(i).Elem().String()
+				}
 			}
 
 			copyValue := reflect.New(reflect.TypeOf("")).Elem()
