@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-var dict = map[string]string{
+var PseudoParams = map[string]string{
 	"AWS::AccountId":        "123456789012",
 	"AWS::NotificationARNs": "arn1, arn2", // []string{"arn1, arn2"},
 	"AWS::NoValue":          "",
@@ -30,7 +30,7 @@ func RefValue(obj reflect.Value) string {
 	k := obj.MapKeys()[0]
 	v := obj.MapIndex(k)
 
-	return dict[v.Elem().String()]
+	return PseudoParams[v.Elem().String()]
 }
 
 func IsFnJoin(obj reflect.Value) bool {

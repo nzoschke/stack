@@ -57,3 +57,20 @@ func TestJoinRef(t *testing.T) {
 
 	_assert(t, cases)
 }
+
+func TestAll(t *testing.T) {
+	tmpl, ok := translate(_template(t, nil)).(*Template)
+
+	if !ok {
+		t.Errorf("Error %q", ok)
+	}
+
+	cases := Cases{
+		{tmpl.Resources["DynamoBuilds"].Properties["TableName"], "teststack-builds"},
+		{tmpl.Resources["DynamoChanges"].Properties["TableName"], "teststack-changes"},
+		{tmpl.Resources["DynamoReleases"].Properties["TableName"], "teststack-releases"},
+		{tmpl.Resources["Settings"].Properties["Tags"], []map[string]string{{"Key": "system", "Value": "convox"}, {"Key": "app", "Value": "teststack"}}},
+	}
+
+	_assert(t, cases)
+}
