@@ -1,4 +1,4 @@
-package formation
+package stack
 
 import (
 	"encoding/json"
