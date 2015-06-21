@@ -1,0 +1,625 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "",
+  "Conditions": {
+    "BlankCluster": {
+      "Fn::Equals": [
+        {
+          "Ref": "Cluster"
+        },
+        ""
+      ]
+    },
+    "BlankWebService": {
+      "Fn::Equals": [
+        {
+          "Ref": "WebService"
+        },
+        ""
+      ]
+    }
+  },
+  "Outputs": {
+    "BalancerHost": {
+      "Value": {
+        "Fn::GetAtt": [
+          "Balancer",
+          "DNSName"
+        ]
+      }
+    },
+    "Kinesis": {
+      "Value": {
+        "Ref": "Kinesis"
+      }
+    },
+    "Settings": {
+      "Value": {
+        "Ref": "Settings"
+      }
+    },
+    "WebPort80Balancer": {
+      "Value": {
+        "Ref": "WebPort80Balancer"
+      }
+    }
+  },
+  "Parameters": {
+    "Check": {
+      "Default": "HTTP:/",
+      "Description": "",
+      "Type": "String"
+    },
+    "Cluster": {
+      "Default": "",
+      "Description": "",
+      "Type": "String"
+    },
+    "Environment": {
+      "Default": "",
+      "Description": "",
+      "Type": "String"
+    },
+    "Kernel": {
+      "Default": "",
+      "Description": "",
+      "Type": "String"
+    },
+    "Key": {
+      "Default": "",
+      "Description": "",
+      "Type": "String"
+    },
+    "Release": {
+      "Default": "",
+      "Description": "",
+      "Type": "String"
+    },
+    "Repository": {
+      "Default": "",
+      "Description": "Source code repository",
+      "Type": "String"
+    },
+    "Subnets": {
+      "Default": "",
+      "Description": "VPC subnets for this app",
+      "Type": "List\u003cAWS::EC2::Subnet::Id\u003e"
+    },
+    "VPC": {
+      "Default": "",
+      "Description": "VPC for this app",
+      "Type": "AWS::EC2::VPC::Id"
+    },
+    "WebCommand": {
+      "Default": "",
+      "Description": "",
+      "Type": "String"
+    },
+    "WebImage": {
+      "Default": "",
+      "Description": "",
+      "Type": "String"
+    },
+    "WebPort80Balancer": {
+      "Default": "80",
+      "Description": "",
+      "Type": "String"
+    },
+    "WebPort80Host": {
+      "Default": "53081",
+      "Description": "",
+      "Type": "String"
+    },
+    "WebService": {
+      "Default": "",
+      "Description": "",
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "Balancer": {
+      "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Properties": {
+        "ConnectionDrainingPolicy": {
+          "Enabled": true,
+          "Timeout": 60
+        },
+        "ConnectionSettings": {
+          "IdleTimeout": 60
+        },
+        "CrossZone": true,
+        "HealthCheck": {
+          "HealthyThreshold": "2",
+          "Interval": 5,
+          "Target": {
+            "Ref": "Check"
+          },
+          "Timeout": 3,
+          "UnhealthyThreshold": "2"
+        },
+        "LBCookieStickinessPolicy": [
+          {
+            "PolicyName": "affinity"
+          }
+        ],
+        "Listeners": [
+          {
+            "InstancePort": {
+              "Ref": "WebPort80Host"
+            },
+            "InstanceProtocol": "TCP",
+            "LoadBalancerPort": {
+              "Ref": "WebPort80Balancer"
+            },
+            "Protocol": "TCP"
+          }
+        ],
+        "LoadBalancerName": {
+          "Ref": "AWS::StackName"
+        },
+        "SecurityGroups": [
+          {
+            "Ref": "BalancerSecurityGroup"
+          }
+        ],
+        "Subnets": {
+          "Ref": "Subnets"
+        }
+      }
+    },
+    "BalancerSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": {
+          "Fn::Join": [
+            " ",
+            [
+              {
+                "Ref": "AWS::StackName"
+              },
+              "-balancer"
+            ]
+          ]
+        },
+        "SecurityGroupIngress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": {
+              "Ref": "WebPort80Balancer"
+            },
+            "IpProtocol": "tcp",
+            "ToPort": {
+              "Ref": "WebPort80Balancer"
+            }
+          }
+        ],
+        "VpcId": {
+          "Ref": "VPC"
+        }
+      }
+    },
+    "DynamoBuilds": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "id",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "app",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "created",
+            "AttributeType": "S"
+          }
+        ],
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "app.created",
+            "KeySchema": [
+              {
+                "AttributeName": "app",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "created",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            },
+            "ProvisionedThroughput": {
+              "ReadCapacityUnits": "5",
+              "WriteCapacityUnits": "5"
+            }
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "id",
+            "KeyType": "HASH"
+          }
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": "5",
+          "WriteCapacityUnits": "5"
+        },
+        "TableName": {
+          "Fn::Join": [
+            "-",
+            [
+              {
+                "Ref": "AWS::StackName"
+              },
+              "builds"
+            ]
+          ]
+        }
+      }
+    },
+    "DynamoChanges": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "app",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "created",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "app",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "created",
+            "KeyType": "RANGE"
+          }
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": "5",
+          "WriteCapacityUnits": "5"
+        },
+        "TableName": {
+          "Fn::Join": [
+            "-",
+            [
+              {
+                "Ref": "AWS::StackName"
+              },
+              "changes"
+            ]
+          ]
+        }
+      }
+    },
+    "DynamoReleases": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "id",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "app",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "created",
+            "AttributeType": "S"
+          }
+        ],
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "app.created",
+            "KeySchema": [
+              {
+                "AttributeName": "app",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "created",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            },
+            "ProvisionedThroughput": {
+              "ReadCapacityUnits": "5",
+              "WriteCapacityUnits": "5"
+            }
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "id",
+            "KeyType": "HASH"
+          }
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": "5",
+          "WriteCapacityUnits": "5"
+        },
+        "TableName": {
+          "Fn::Join": [
+            "-",
+            [
+              {
+                "Ref": "AWS::StackName"
+              },
+              "releases"
+            ]
+          ]
+        }
+      }
+    },
+    "Kinesis": {
+      "Type": "AWS::Kinesis::Stream",
+      "Properties": {
+        "ShardCount": 1
+      }
+    },
+    "LogsAccess": {
+      "Type": "AWS::IAM::AccessKey",
+      "Properties": {
+        "Serial": "1",
+        "Status": "Active",
+        "UserName": {
+          "Ref": "LogsUser"
+        }
+      }
+    },
+    "LogsUser": {
+      "Type": "AWS::IAM::User",
+      "Properties": {
+        "Path": "/convox/",
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "kinesis:PutRecords"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn:aws:kinesis:*:*:stream/",
+                          {
+                            "Ref": "AWS::StackName"
+                          },
+                          "-*"
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "LogsRole"
+          }
+        ]
+      }
+    },
+    "Service": {
+      "Type": "Custom::ECSService",
+      "Properties": {
+        "Cluster": {
+          "Ref": "Cluster"
+        },
+        "DesiredCount": "1",
+        "LoadBalancers": [
+          {
+            "Fn::Join": [
+              ":",
+              [
+                {
+                  "Ref": "Balancer"
+                },
+                "web",
+                "80"
+              ]
+            ]
+          }
+        ],
+        "Name": {
+          "Ref": "AWS::StackName"
+        },
+        "Role": {
+          "Ref": "ServiceRole"
+        },
+        "ServiceToken": {
+          "Ref": "Kernel"
+        },
+        "TaskDefinition": {
+          "Ref": "TaskDefinition"
+        }
+      }
+    },
+    "ServiceRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "sts:AssumeRole"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "ecs.amazonaws.com"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "elasticloadbalancing:Describe*",
+                    "elasticloadbalancing:DeregisterInstancesFromLoadBalancer",
+                    "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
+                    "ec2:Describe*",
+                    "ec2:AuthorizeSecurityGroupIngress"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    "*"
+                  ]
+                }
+              ]
+            },
+            "PolicyName": "ServiceRole"
+          }
+        ]
+      }
+    },
+    "Settings": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "AccessControl": "Private",
+        "Tags": [
+          {
+            "Key": "system",
+            "Value": "convox"
+          },
+          {
+            "Key": "app",
+            "Value": {
+              "Ref": "AWS::StackName"
+            }
+          }
+        ]
+      }
+    },
+    "TaskDefinition": {
+      "Type": "Custom::ECSTaskDefinition",
+      "Properties": {
+        "Environment": {
+          "Ref": "Environment"
+        },
+        "Name": {
+          "Ref": "AWS::StackName"
+        },
+        "Release": {
+          "Ref": "Release"
+        },
+        "ServiceToken": {
+          "Ref": "Kernel"
+        },
+        "Tasks": [
+          {
+            "Fn::If": [
+              "BlankWebService",
+              {
+                "CPU": "200",
+                "Command": {
+                  "Ref": "WebCommand"
+                },
+                "Image": {
+                  "Ref": "WebImage"
+                },
+                "Key": {
+                  "Ref": "Key"
+                },
+                "Links": [],
+                "Memory": "300",
+                "Name": "web",
+                "PortMappings": [
+                  {
+                    "Fn::Join": [
+                      ":",
+                      [
+                        {
+                          "Ref": "WebPort80Host"
+                        },
+                        "80"
+                      ]
+                    ]
+                  }
+                ],
+                "Services": [],
+                "Volumes": []
+              },
+              {
+                "Ref": "AWS::NoValue"
+              }
+            ]
+          },
+          {
+            "CPU": "20",
+            "Environment": {
+              "AWS_ACCESS": {
+                "Ref": "LogsAccess"
+              },
+              "AWS_REGION": {
+                "Ref": "AWS::Region"
+              },
+              "AWS_SECRET": {
+                "Fn::GetAtt": [
+                  "LogsAccess",
+                  "SecretAccessKey"
+                ]
+              },
+              "CONTAINERS": {
+                "Fn::Join": [
+                  ",",
+                  [
+                    {
+                      "Fn::If": [
+                        "BlankWebService",
+                        "web",
+                        {
+                          "Ref": "AWS::NoValue"
+                        }
+                      ]
+                    }
+                  ]
+                ]
+              },
+              "KINESIS": {
+                "Ref": "Kinesis"
+              }
+            },
+            "Image": "index.docker.io/convox/logs",
+            "Links": [
+              {
+                "Fn::If": [
+                  "BlankWebService",
+                  "web:web",
+                  {
+                    "Ref": "AWS::NoValue"
+                  }
+                ]
+              }
+            ],
+            "Memory": "64",
+            "Name": "convox-logs",
+            "Volumes": [
+              "/var/run/docker.sock:/var/run/docker.sock"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
