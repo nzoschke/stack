@@ -1,6 +1,7 @@
 package formation
 
 import (
+	"fmt"
 	"reflect"
 )
 
@@ -17,6 +18,8 @@ func translate(obj interface{}) interface{} {
 	// Wrap the original in a reflect.Value
 	original := reflect.ValueOf(obj)
 
+	fmt.Printf("TRANSLATE %+v (%+v)\n", obj, original.Type())
+
 	copy := reflect.New(original.Type()).Elem()
 	translateRecursive(copy, original)
 
@@ -25,6 +28,8 @@ func translate(obj interface{}) interface{} {
 }
 
 func translateRecursive(copy, original reflect.Value) {
+	fmt.Printf("%+v ; %+v\n", original, original.Type())
+
 	switch original.Kind() {
 	// The first cases handle nested structures and translate them recursively
 
@@ -50,10 +55,12 @@ func translateRecursive(copy, original reflect.Value) {
 	case reflect.Interface:
 		// Get rid of the wrapping interface
 		originalValue := original.Elem()
-		// Create a new object. Now new gives us a pointer, but we want the value it
-		// points to, so we have to call Elem() to unwrap it
-		copyValue := reflect.New(originalValue.Type()).Elem()
-		translateRecursive(copyValue, originalValue)
+		k := originalValue.MapKeys()[0]
+		v := originalValue.MapIndex(k)
+
+		copyValue := reflect.New(reflect.TypeOf("")).Elem()
+		copyValue.SetString(dict[v.Elem().String()])
+		translateRecursive(copyValue, copyValue)
 		copy.Set(copyValue)
 
 	// If it is a struct we translate each field
@@ -81,11 +88,6 @@ func translateRecursive(copy, original reflect.Value) {
 		}
 
 	// Otherwise we cannot traverse anywhere so this finishes the the recursion
-
-	// If it is a string translate it (yay finally we're doing what we came for)
-	case reflect.String:
-		translatedString := dict[original.Interface().(string)]
-		copy.SetString(translatedString)
 
 	// And everything else will simply be taken from the original
 	default:

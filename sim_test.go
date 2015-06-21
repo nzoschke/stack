@@ -7,7 +7,7 @@ import (
 
 func TestRef(t *testing.T) {
 	var f interface{}
-	b := []byte(`{ "Ref": "AWS::StackName" }`)
+	b := []byte(`{ "Name": { "Ref": "AWS::StackName" } }`)
 	err := json.Unmarshal(b, &f)
 
 	if err != nil {
@@ -15,7 +15,7 @@ func TestRef(t *testing.T) {
 	}
 
 	cases := Cases{
-		{translate(f), map[string]string{"Ref": "teststack"}},
+		{translate(f), map[string]string{"Name": "teststack"}},
 	}
 
 	_assert(t, cases)
