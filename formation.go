@@ -233,9 +233,13 @@ type List []interface{}
 
 type Template struct {
 	AWSTemplateFormatVersion string
+  Conditions               Conditions
 	Description              string
 	Resources                Resources
 }
+
+type Conditions map[string]Condition
+type Condition map[string]interface{}
 
 type InternetGateway struct {
 }

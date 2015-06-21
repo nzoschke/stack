@@ -18,6 +18,30 @@ func TestVersion(t *testing.T) {
 
 }
 
+func TestConditions(t *testing.T) {
+  tmpl := _template(t, nil)
+  conditions := tmpl.Conditions
+
+  var keys sort.StringSlice = make([]string, 0, len(conditions))
+
+  for k := range conditions {
+    keys = append(keys, k)
+  }
+  keys.Sort()
+
+  cases := []struct {
+    got, want interface{}
+  }{
+    {[]string(keys), []string{"BlankCluster"}},
+  }
+
+  for _, c := range cases {
+    if !reflect.DeepEqual(c.got, c.want) {
+      t.Errorf("TestConditions got %q, want %q", c.got, c.want)
+    }
+  }
+}
+
 func TestResources(t *testing.T) {
 	tmpl := _template(t, nil)
 	resources := tmpl.Resources
@@ -46,7 +70,6 @@ func TestResources(t *testing.T) {
 			t.Errorf("TestResources got %q, want %q", c.got, c.want)
 		}
 	}
-
 }
 
 func TestCelery(t *testing.T) {
