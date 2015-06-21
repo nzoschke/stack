@@ -1,7 +1,6 @@
 package formation
 
 import (
-	// "fmt"
 	"reflect"
 	"strings"
 )
