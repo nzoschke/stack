@@ -233,7 +233,7 @@
     "BalancerSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
       "Properties": {
-        "GroupDescription": { "Fn::Join": [ " ", [ { "Ref": "AWS::StackName" }, "-balancer" ] ] },
+        "GroupDescription": { "Fn::Join": [ "-", [ { "Ref": "AWS::StackName" }, "balancer" ] ] },
         "SecurityGroupIngress": [ {{ ingress . }} ],
         "VpcId": { "Ref": "VPC" }
       }

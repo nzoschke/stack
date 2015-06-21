@@ -172,12 +172,12 @@
       "Properties": {
         "GroupDescription": {
           "Fn::Join": [
-            " ",
+            "-",
             [
               {
                 "Ref": "AWS::StackName"
               },
-              "-balancer"
+              "balancer"
             ]
           ]
         },
