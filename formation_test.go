@@ -99,24 +99,15 @@ func TestOutputs(t *testing.T) {
 	_assert(t, cases)
 }
 
-func TestCelery(t *testing.T) {
-}
+func TestCelery(t *testing.T) {}
 
-func TestHttpd(t *testing.T) {
+func TestHttpd(t *testing.T) {}
 
-}
+func TestProcfile(t *testing.T) {}
 
-func TestProcfile(t *testing.T) {
+func TestDockerCompose(t *testing.T) {}
 
-}
-
-func TestDockerCompose(t *testing.T) {
-
-}
-
-func TestJSONEvaluation(t *testing.T) {
-
-}
+func TestJSONEvaluation(t *testing.T) {}
 
 func _assert(t *testing.T, cases Cases) {
 	for _, c := range cases {
