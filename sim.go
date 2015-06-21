@@ -1,6 +1,7 @@
 package formation
 
 import (
+	// "fmt"
 	"reflect"
 	"strings"
 )
@@ -37,6 +38,18 @@ func RefValue(obj reflect.Value, params map[string]string) string {
 	}
 
 	return PseudoParams[name]
+}
+
+func IsFnEquals(obj reflect.Value) bool {
+	if obj.Type() != reflect.TypeOf(make(map[string]interface{})) {
+		return false
+	}
+
+	if len(obj.MapKeys()) != 1 {
+		return false
+	}
+
+	return obj.MapKeys()[0].String() == "Fn::Equals"
 }
 
 func IsFnJoin(obj reflect.Value) bool {
@@ -96,6 +109,28 @@ func translateRecursive(copy, original reflect.Value, params map[string]string) 
 		if IsRef(originalValue) {
 			copyValue := reflect.New(reflect.TypeOf("")).Elem()
 			copyValue.SetString(RefValue(originalValue, params))
+			translateRecursive(copyValue, copyValue, params)
+			copy.Set(copyValue)
+		} else if IsFnEquals(originalValue) {
+			funcName := originalValue.MapKeys()[0]
+			funcValues := originalValue.MapIndex(funcName).Elem()
+
+			v0 := funcValues.Index(0).Elem()
+
+			s0 := v0.String()
+			if IsRef(v0) {
+				s0 = RefValue(v0, params)
+			}
+
+			v1 := funcValues.Index(1).Elem()
+
+			s1 := v1.String()
+			if IsRef(v1) {
+				s1 = RefValue(v1, params)
+			}
+
+			copyValue := reflect.New(reflect.TypeOf(false)).Elem()
+			copyValue.SetBool(s0 == s1)
 			translateRecursive(copyValue, copyValue, params)
 			copy.Set(copyValue)
 		} else if IsFnJoin(originalValue) {

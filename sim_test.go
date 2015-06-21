@@ -5,6 +5,31 @@ import (
 	"testing"
 )
 
+func TestEqual(t *testing.T) {
+	var f1, f2 interface{}
+
+	p := map[string]string{
+		"Cluster": "convox",
+	}
+
+	_ = json.Unmarshal(
+		[]byte(`{ "BlankCluster": { "Fn::Equals": [ { "Ref": "Cluster" }, "" ] } }`),
+		&f1,
+	)
+
+	_ = json.Unmarshal(
+		[]byte(`{ "BlankPostgresService": { "Fn::Equals": [ { "Ref": "PostgresService" }, "" ] } }`),
+		&f2,
+	)
+
+	cases := Cases{
+		{translate(f1, p), map[string]bool{"BlankCluster": false}},
+		{translate(f2, p), map[string]bool{"BlankPostgresService": true}},
+	}
+
+	_assert(t, cases)
+}
+
 func TestRef(t *testing.T) {
 	var f1, f2 interface{}
 
