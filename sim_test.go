@@ -6,16 +6,25 @@ import (
 )
 
 func TestRef(t *testing.T) {
-	var f interface{}
-	b := []byte(`{ "Name": { "Ref": "AWS::StackName" } }`)
-	err := json.Unmarshal(b, &f)
+	var f1, f2 interface{}
 
-	if err != nil {
-		t.Errorf("Error %q", err)
+	p := map[string]string{
+		"Cluster": "convox",
 	}
 
+	_ = json.Unmarshal(
+		[]byte(`{ "Name": { "Ref": "AWS::StackName" } }`),
+		&f1,
+	)
+
+	_ = json.Unmarshal(
+		[]byte(`{ "Cluster": { "Ref": "Cluster" } }`),
+		&f2,
+	)
+
 	cases := Cases{
-		{translate(f), map[string]string{"Name": "teststack"}},
+		{translate(f1, p), map[string]string{"Name": "teststack"}},
+		{translate(f2, p), map[string]string{"Cluster": "convox"}},
 	}
 
 	_assert(t, cases)
@@ -23,6 +32,8 @@ func TestRef(t *testing.T) {
 
 func TestJoin(t *testing.T) {
 	var f interface{}
+	var p map[string]string
+
 	b := []byte(`{ "TableName": { "Fn::Join": [ "-", [ "myapp", "builds" ] ] } }`)
 	err := json.Unmarshal(b, &f)
 
@@ -31,7 +42,7 @@ func TestJoin(t *testing.T) {
 	}
 
 	cases := Cases{
-		{translate(f), map[string]string{"TableName": "myapp-builds"}},
+		{translate(f, p), map[string]string{"TableName": "myapp-builds"}},
 	}
 
 	_assert(t, cases)
@@ -39,6 +50,7 @@ func TestJoin(t *testing.T) {
 
 func TestJoinRef(t *testing.T) {
 	var f1, f2 interface{}
+	var p map[string]string
 
 	_ = json.Unmarshal(
 		[]byte(`{ "TableName": { "Fn::Join": [ "-", [ { "Ref": "AWS::StackName" }, "builds" ] ] } }`),
@@ -51,15 +63,19 @@ func TestJoinRef(t *testing.T) {
 	)
 
 	cases := Cases{
-		{translate(f1), map[string]string{"TableName": "teststack-builds"}},
-		{translate(f2), map[string][]string{"Resource": []string{"arn:aws:kinesis:*:*:stream/teststack-*"}}},
+		{translate(f1, p), map[string]string{"TableName": "teststack-builds"}},
+		{translate(f2, p), map[string][]string{"Resource": []string{"arn:aws:kinesis:*:*:stream/teststack-*"}}},
 	}
 
 	_assert(t, cases)
 }
 
 func TestAll(t *testing.T) {
-	tmpl, ok := translate(_template(t, nil)).(*Template)
+	params := map[string]string{
+		"Cluster": "convox",
+	}
+
+	tmpl, ok := translate(_template(t, nil), params).(*Template)
 
 	if !ok {
 		t.Errorf("Error %q", ok)

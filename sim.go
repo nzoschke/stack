@@ -26,11 +26,17 @@ func IsRef(obj reflect.Value) bool {
 	return obj.MapKeys()[0].String() == "Ref"
 }
 
-func RefValue(obj reflect.Value) string {
+func RefValue(obj reflect.Value, params map[string]string) string {
 	k := obj.MapKeys()[0]
 	v := obj.MapIndex(k)
 
-	return PseudoParams[v.Elem().String()]
+	name := v.Elem().String()
+
+	if val, ok := params[name]; ok {
+		return val
+	}
+
+	return PseudoParams[name]
 }
 
 func IsFnJoin(obj reflect.Value) bool {
@@ -45,20 +51,20 @@ func IsFnJoin(obj reflect.Value) bool {
 	return obj.MapKeys()[0].String() == "Fn::Join"
 }
 
-func translate(obj interface{}) interface{} {
+func translate(obj interface{}, params map[string]string) interface{} {
 	// Wrap the original in a reflect.Value
 	original := reflect.ValueOf(obj)
 
 	// fmt.Printf("TRANSLATE %+v (%+v)\n", obj, original.Type())
 
 	copy := reflect.New(original.Type()).Elem()
-	translateRecursive(copy, original)
+	translateRecursive(copy, original, params)
 
 	// Remove the reflection wrapper
 	return copy.Interface()
 }
 
-func translateRecursive(copy, original reflect.Value) {
+func translateRecursive(copy, original reflect.Value, params map[string]string) {
 	// fmt.Printf("%+v ; %+v\n", original, original.Type())
 
 	switch original.Kind() {
@@ -77,7 +83,7 @@ func translateRecursive(copy, original reflect.Value) {
 		// Allocate a new object and set the pointer to it
 		copy.Set(reflect.New(originalValue.Type()))
 		// Unwrap the newly created pointer
-		translateRecursive(copy.Elem(), originalValue)
+		translateRecursive(copy.Elem(), originalValue, params)
 
 	// If it is an interface (which is very similar to a pointer), do basically the
 	// same as for the pointer. Though a pointer is not the same as an interface so
@@ -89,8 +95,8 @@ func translateRecursive(copy, original reflect.Value) {
 
 		if IsRef(originalValue) {
 			copyValue := reflect.New(reflect.TypeOf("")).Elem()
-			copyValue.SetString(RefValue(originalValue))
-			translateRecursive(copyValue, copyValue)
+			copyValue.SetString(RefValue(originalValue, params))
+			translateRecursive(copyValue, copyValue, params)
 			copy.Set(copyValue)
 		} else if IsFnJoin(originalValue) {
 			k := originalValue.MapKeys()[0]
@@ -104,7 +110,7 @@ func translateRecursive(copy, original reflect.Value) {
 				e := parts.Index(i).Elem()
 
 				if IsRef(e) {
-					p[i] = RefValue(e)
+					p[i] = RefValue(e, params)
 				} else {
 					p[i] = parts.Index(i).Elem().String()
 				}
@@ -112,27 +118,27 @@ func translateRecursive(copy, original reflect.Value) {
 
 			copyValue := reflect.New(reflect.TypeOf("")).Elem()
 			copyValue.SetString(strings.Join(p, delim))
-			translateRecursive(copyValue, copyValue)
+			translateRecursive(copyValue, copyValue, params)
 			copy.Set(copyValue)
 		} else {
 			// Create a new object. Now new gives us a pointer, but we want the value it
 			// points to, so we have to call Elem() to unwrap it
 			copyValue := reflect.New(originalValue.Type()).Elem()
-			translateRecursive(copyValue, originalValue)
+			translateRecursive(copyValue, originalValue, params)
 			copy.Set(copyValue)
 		}
 
 	// If it is a struct we translate each field
 	case reflect.Struct:
 		for i := 0; i < original.NumField(); i += 1 {
-			translateRecursive(copy.Field(i), original.Field(i))
+			translateRecursive(copy.Field(i), original.Field(i), params)
 		}
 
 	// If it is a slice we create a new slice and translate each element
 	case reflect.Slice:
 		copy.Set(reflect.MakeSlice(original.Type(), original.Len(), original.Cap()))
 		for i := 0; i < original.Len(); i += 1 {
-			translateRecursive(copy.Index(i), original.Index(i))
+			translateRecursive(copy.Index(i), original.Index(i), params)
 		}
 
 	// If it is a map we create a new map and translate each value
@@ -142,7 +148,7 @@ func translateRecursive(copy, original reflect.Value) {
 			originalValue := original.MapIndex(key)
 			// New gives us a pointer, but again we want the value
 			copyValue := reflect.New(originalValue.Type()).Elem()
-			translateRecursive(copyValue, originalValue)
+			translateRecursive(copyValue, originalValue, params)
 			copy.SetMapIndex(key, copyValue)
 		}
 
