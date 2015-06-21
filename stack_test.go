@@ -3,7 +3,7 @@ package stack
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"io/ioutil"
 	"sort"
 	"testing"
 )
@@ -113,7 +113,7 @@ web:
 
 	tmpl := _template(t, manifest)
 	j, _ := json.MarshalIndent(tmpl, "", "  ")
-	fmt.Printf("%+v\n", string(j))
+	_ = ioutil.WriteFile("httpd.json", j, 0644)
 }
 
 func TestProcfile(t *testing.T) {}
