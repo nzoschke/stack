@@ -104,7 +104,7 @@ s = obj["Resources"]["Service"]["Properties"]
 
 assert.equal(s["Cluster"], "convox-charlie")
 assert.equal(s["DesiredCount"], "1")
-assert(s["LoadBalancers"])
+assert.deepEqual(s["LoadBalancers"], [ { "Fn::Join": [ ":", [ { "Ref": "Balancer" }, "web", "80" ] ] } ])
 assert.deepEqual(s["Role"], {"Ref": "ServiceRole"}) // TODO: Verify ServiceRole Properties
 assert.deepEqual(s["TaskDefinition"], {"Ref": "TaskDefinition"})
 
