@@ -14,12 +14,11 @@ type Cases []struct {
 func TestVersion(t *testing.T) {
 	tmpl := _template(t, nil)
 
-	want := "2010-09-09"
+  cases := Cases{
+    {tmpl.AWSTemplateFormatVersion, "2010-09-09"},
+  }
 
-	if tmpl.AWSTemplateFormatVersion != want {
-		t.Errorf("TestVersion got %s, want %s", tmpl.AWSTemplateFormatVersion, want)
-	}
-
+  _assert(t, cases)
 }
 
 func TestConditions(t *testing.T) {
