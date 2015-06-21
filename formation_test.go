@@ -34,11 +34,11 @@ func TestResources(t *testing.T) {
 	}{
 		{[]string(keys), []string{"DynamoBuilds", "DynamoChanges", "DynamoReleases", "ServiceRole", "Settings"}},
 
-		{(resources["DynamoBuilds"]).(map[string]interface{})["Type"], "AWS::DynamoDB::Table"},
-		{(resources["DynamoChanges"]).(map[string]interface{})["Type"], "AWS::DynamoDB::Table"},
-		{(resources["DynamoReleases"]).(map[string]interface{})["Type"], "AWS::DynamoDB::Table"},
-		{(resources["ServiceRole"]).(map[string]interface{})["Type"], "AWS::IAM::Role"},
-		{(resources["Settings"]).(map[string]interface{})["Type"], "AWS::S3::Bucket"},
+		{resources["DynamoBuilds"]["Type"], "AWS::DynamoDB::Table"},
+		{resources["DynamoChanges"]["Type"], "AWS::DynamoDB::Table"},
+		{resources["DynamoReleases"]["Type"], "AWS::DynamoDB::Table"},
+		{resources["ServiceRole"]["Type"], "AWS::IAM::Role"},
+		{resources["Settings"]["Type"], "AWS::S3::Bucket"},
 	}
 
 	for _, c := range cases {
