@@ -3,6 +3,7 @@ package stack
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"testing"
 )
@@ -99,9 +100,21 @@ func TestOutputs(t *testing.T) {
 	_assert(t, cases)
 }
 
-func TestCelery(t *testing.T) {}
+func TestCelery(t *testing.T) {
+}
 
-func TestHttpd(t *testing.T) {}
+func TestHttpd(t *testing.T) {
+	manifest, _ := Import([]byte(`
+web:
+  image: httpd
+  ports:
+    - 80:80
+`))
+
+	tmpl := _template(t, manifest)
+	j, _ := json.MarshalIndent(tmpl, "", "  ")
+	fmt.Printf("%+v\n", string(j))
+}
 
 func TestProcfile(t *testing.T) {}
 

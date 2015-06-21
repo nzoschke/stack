@@ -8,17 +8,6 @@ import (
 	"strings"
 )
 
-type ManifestEntry struct {
-	Command interface{} `yaml:"command"`
-	Links   []string    `yaml:"links"`
-	Ports   []string    `yaml:"ports"`
-	Volumes []string    `yaml:"volumes"`
-
-	Randoms []string
-}
-
-type Manifest map[string]ManifestEntry
-
 type Listener struct {
 	Balancer string
 	Process  string
