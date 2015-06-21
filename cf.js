@@ -21,8 +21,8 @@ var PSEUDO_PARAMS = {
   "AWS::AccountId":        "123456789012",
   "AWS::NotificationARNs": ["arn1", "arn2"],
   "AWS::NoValue":          "",
-  "AWS::Region":           "us-west-2",
-  "AWS::StackId":          "arn:aws:cloudformation:us-west-2:123456789012:stack/teststack/51af3dc0-da77-11e4-872e-1234567db123",
+  "AWS::Region":           "us-east-1",
+  "AWS::StackId":          "arn:aws:cloudformation:us-east-1:123456789012:stack/teststack/51af3dc0-da77-11e4-872e-1234567db123",
   "AWS::StackName":        "httpd-" + parseInt(new Date() / 1000),
 }
 
@@ -55,6 +55,30 @@ traverse(obj).forEach(function (x) {
 // Evaluate all Resource Refs
 // http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html
 
+// Evaluate all Conditions
+// http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html
 
-console.log(JSON.stringify(obj, null, 2))
+var CONDITIONS = {}
+
+for (var key in obj["Conditions"]) {
+  c = obj["Conditions"][key]
+
+  if (c.hasOwnProperty("Fn::Equals")) {
+    CONDITIONS[key] = c["Fn::Equals"][0] == c["Fn::Equals"][1]
+  }
+}
+
+// Evaluate Fn::If
+
+traverse(obj).forEach(function (x) {
+  if (typeof(x) == 'object' && Object.keys(x).length == 1 && Object.keys(x)[0] == "Fn::If") {
+    cond = x["Fn::If"][0]
+
+    v = CONDITIONS[cond] ? x["Fn::If"][1] : x["Fn::If"][2]
+
+    this.update(v)
+  }
+})
+
+// console.log(JSON.stringify(obj, null, 2))
 fs.writeFileSync('httpd-sim.json', JSON.stringify(obj, null, 2))
