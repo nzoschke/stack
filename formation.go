@@ -233,10 +233,10 @@ type List []interface{}
 
 type Template struct {
 	AWSTemplateFormatVersion string
-  Conditions               Conditions
+	Conditions               Conditions
 	Description              string
 	Resources                Resources
-  Parameters               Parameters
+	Parameters               Parameters
 }
 
 type Conditions map[string]Condition
