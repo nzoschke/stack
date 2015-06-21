@@ -14,11 +14,11 @@ type Cases []struct {
 func TestVersion(t *testing.T) {
 	tmpl := _template(t, nil)
 
-  cases := Cases{
-    {tmpl.AWSTemplateFormatVersion, "2010-09-09"},
-  }
+	cases := Cases{
+		{tmpl.AWSTemplateFormatVersion, "2010-09-09"},
+	}
 
-  _assert(t, cases)
+	_assert(t, cases)
 }
 
 func TestConditions(t *testing.T) {
@@ -76,6 +76,24 @@ func TestResources(t *testing.T) {
 		{resources["DynamoReleases"]["Type"], "AWS::DynamoDB::Table"},
 		{resources["ServiceRole"]["Type"], "AWS::IAM::Role"},
 		{resources["Settings"]["Type"], "AWS::S3::Bucket"},
+	}
+
+	_assert(t, cases)
+}
+
+func TestOutputs(t *testing.T) {
+	tmpl := _template(t, nil)
+	o := tmpl.Outputs
+
+	var keys sort.StringSlice = make([]string, 0, len(o))
+
+	for k := range o {
+		keys = append(keys, k)
+	}
+	keys.Sort()
+
+	cases := Cases{
+		{[]string(keys), []string{"Settings"}},
 	}
 
 	_assert(t, cases)

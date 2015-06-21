@@ -235,12 +235,15 @@ type Template struct {
 	AWSTemplateFormatVersion string
 	Conditions               Conditions
 	Description              string
-	Resources                Resources
+	Outputs                  Outputs
 	Parameters               Parameters
+	Resources                Resources
 }
 
 type Conditions map[string]Condition
 type Condition map[string]interface{}
+type Outputs map[string]Output
+type Output map[string]interface{}
 type Parameters map[string]Parameter
 type Parameter map[string]interface{}
 
