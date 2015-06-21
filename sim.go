@@ -3,6 +3,7 @@ package formation
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 var dict = map[string]string{
@@ -55,13 +56,38 @@ func translateRecursive(copy, original reflect.Value) {
 	case reflect.Interface:
 		// Get rid of the wrapping interface
 		originalValue := original.Elem()
-		k := originalValue.MapKeys()[0]
-		v := originalValue.MapIndex(k)
 
-		copyValue := reflect.New(reflect.TypeOf("")).Elem()
-		copyValue.SetString(dict[v.Elem().String()])
-		translateRecursive(copyValue, copyValue)
-		copy.Set(copyValue)
+		if originalValue.Type() == reflect.TypeOf(make(map[string]interface{})) && len(originalValue.MapKeys()) == 1 && originalValue.MapKeys()[0].String() == "Ref" {
+			k := originalValue.MapKeys()[0]
+			v := originalValue.MapIndex(k)
+
+			copyValue := reflect.New(reflect.TypeOf("")).Elem()
+			copyValue.SetString(dict[v.Elem().String()])
+			translateRecursive(copyValue, copyValue)
+			copy.Set(copyValue)
+		} else if originalValue.Type() == reflect.TypeOf(make(map[string]interface{})) && len(originalValue.MapKeys()) == 1 && originalValue.MapKeys()[0].String() == "Fn::Join" {
+			k := originalValue.MapKeys()[0]
+			v := originalValue.MapIndex(k)
+
+			delim := v.Elem().Index(0).Elem().String()
+			parts := v.Elem().Index(1).Elem()
+
+			p := make([]string, parts.Len())
+			for i := 0; i < parts.Len(); i++ {
+				p[i] = parts.Index(i).Elem().String()
+			}
+
+			copyValue := reflect.New(reflect.TypeOf("")).Elem()
+			copyValue.SetString(strings.Join(p, delim))
+			translateRecursive(copyValue, copyValue)
+			copy.Set(copyValue)
+		} else {
+			// Create a new object. Now new gives us a pointer, but we want the value it
+			// points to, so we have to call Elem() to unwrap it
+			copyValue := reflect.New(originalValue.Type()).Elem()
+			translateRecursive(copyValue, originalValue)
+			copy.Set(copyValue)
+		}
 
 	// If it is a struct we translate each field
 	case reflect.Struct:
