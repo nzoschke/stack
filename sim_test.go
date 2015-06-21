@@ -38,16 +38,21 @@ func TestJoin(t *testing.T) {
 }
 
 func TestJoinRef(t *testing.T) {
-	var f interface{}
-	b := []byte(`{ "TableName": { "Fn::Join": [ "-", [ { "Ref": "AWS::StackName" }, "builds" ] ] } }`)
-	err := json.Unmarshal(b, &f)
+	var f1, f2 interface{}
 
-	if err != nil {
-		t.Errorf("Error %q", err)
-	}
+	_ = json.Unmarshal(
+		[]byte(`{ "TableName": { "Fn::Join": [ "-", [ { "Ref": "AWS::StackName" }, "builds" ] ] } }`),
+		&f1,
+	)
+
+	_ = json.Unmarshal(
+		[]byte(`{ "Resource": [ { "Fn::Join": [ "", [ "arn:aws:kinesis:*:*:stream/", { "Ref": "AWS::StackName" }, "-*" ] ] } ] }`),
+		&f2,
+	)
 
 	cases := Cases{
-		{translate(f), map[string]string{"TableName": "teststack-builds"}},
+		{translate(f1), map[string]string{"TableName": "teststack-builds"}},
+		{translate(f2), map[string][]string{"Resource": []string{"arn:aws:kinesis:*:*:stream/teststack-*"}}},
 	}
 
 	_assert(t, cases)
