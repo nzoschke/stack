@@ -7,6 +7,10 @@ import (
 	"testing"
 )
 
+type Cases []struct {
+	got, want interface{}
+}
+
 func TestVersion(t *testing.T) {
 	tmpl := _template(t, nil)
 
@@ -29,17 +33,11 @@ func TestConditions(t *testing.T) {
 	}
 	keys.Sort()
 
-	cases := []struct {
-		got, want interface{}
-	}{
+	cases := Cases{
 		{[]string(keys), []string{"BlankCluster"}},
 	}
 
-	for _, c := range cases {
-		if !reflect.DeepEqual(c.got, c.want) {
-			t.Errorf("TestConditions got %q, want %q", c.got, c.want)
-		}
-	}
+	_assert(t, cases)
 }
 
 func TestParameters(t *testing.T) {
@@ -53,17 +51,11 @@ func TestParameters(t *testing.T) {
 	}
 	keys.Sort()
 
-	cases := []struct {
-		got, want interface{}
-	}{
+	cases := Cases{
 		{[]string(keys), []string{"Cluster", "Environment", "Kernel", "Key", "Release", "Repository", "Subnets", "VPC"}},
 	}
 
-	for _, c := range cases {
-		if !reflect.DeepEqual(c.got, c.want) {
-			t.Errorf("TestParameters got %q, want %q", c.got, c.want)
-		}
-	}
+	_assert(t, cases)
 }
 
 func TestResources(t *testing.T) {
@@ -77,9 +69,7 @@ func TestResources(t *testing.T) {
 	}
 	keys.Sort()
 
-	cases := []struct {
-		got, want interface{}
-	}{
+	cases := Cases{
 		{[]string(keys), []string{"DynamoBuilds", "DynamoChanges", "DynamoReleases", "ServiceRole", "Settings"}},
 
 		{resources["DynamoBuilds"]["Type"], "AWS::DynamoDB::Table"},
@@ -89,11 +79,7 @@ func TestResources(t *testing.T) {
 		{resources["Settings"]["Type"], "AWS::S3::Bucket"},
 	}
 
-	for _, c := range cases {
-		if !reflect.DeepEqual(c.got, c.want) {
-			t.Errorf("TestResources got %q, want %q", c.got, c.want)
-		}
-	}
+	_assert(t, cases)
 }
 
 func TestCelery(t *testing.T) {
@@ -113,6 +99,14 @@ func TestDockerCompose(t *testing.T) {
 
 func TestJSONEvaluation(t *testing.T) {
 
+}
+
+func _assert(t *testing.T, cases Cases) {
+	for _, c := range cases {
+		if !reflect.DeepEqual(c.got, c.want) {
+			t.Errorf("Got %q, want %q", c.got, c.want)
+		}
+	}
 }
 
 func _template(t *testing.T, data interface{}) *Template {
