@@ -1,8 +1,8 @@
 package formation
 
 import (
+	"bytes"
 	"encoding/json"
-	"reflect"
 	"sort"
 	"testing"
 )
@@ -71,11 +71,11 @@ func TestResources(t *testing.T) {
 	cases := Cases{
 		{[]string(keys), []string{"DynamoBuilds", "DynamoChanges", "DynamoReleases", "ServiceRole", "Settings"}},
 
-		{resources["DynamoBuilds"]["Type"], "AWS::DynamoDB::Table"},
-		{resources["DynamoChanges"]["Type"], "AWS::DynamoDB::Table"},
-		{resources["DynamoReleases"]["Type"], "AWS::DynamoDB::Table"},
-		{resources["ServiceRole"]["Type"], "AWS::IAM::Role"},
-		{resources["Settings"]["Type"], "AWS::S3::Bucket"},
+		{resources["DynamoBuilds"].Type, "AWS::DynamoDB::Table"},
+		{resources["DynamoChanges"].Type, "AWS::DynamoDB::Table"},
+		{resources["DynamoReleases"].Type, "AWS::DynamoDB::Table"},
+		{resources["ServiceRole"].Type, "AWS::IAM::Role"},
+		{resources["Settings"].Type, "AWS::S3::Bucket"},
 	}
 
 	_assert(t, cases)
@@ -99,6 +99,27 @@ func TestOutputs(t *testing.T) {
 	_assert(t, cases)
 }
 
+func TestJSONEvaluation(t *testing.T) {
+	tmpl := _template(t, nil)
+	p := tmpl.Resources["DynamoBuilds"].Properties
+
+	join := map[string][]interface{}{
+		"Fn::Join": []interface{}{
+			"-",
+			[]interface{}{
+				map[string]string{"Ref": "AWS::StackName"},
+				"builds",
+			},
+		},
+	}
+
+	cases := Cases{
+		{p["TableName"], join},
+	}
+
+	_assert(t, cases)
+}
+
 func TestCelery(t *testing.T) {}
 
 func TestHttpd(t *testing.T) {}
@@ -107,11 +128,21 @@ func TestProcfile(t *testing.T) {}
 
 func TestDockerCompose(t *testing.T) {}
 
-func TestJSONEvaluation(t *testing.T) {}
-
 func _assert(t *testing.T, cases Cases) {
 	for _, c := range cases {
-		if !reflect.DeepEqual(c.got, c.want) {
+		j1, err := json.Marshal(c.got)
+
+		if err != nil {
+			t.Errorf("Marshal %q, error %q", c.got, err)
+		}
+
+		j2, err := json.Marshal(c.want)
+
+		if err != nil {
+			t.Errorf("Marshal %q, error %q", c.want, err)
+		}
+
+		if !bytes.Equal(j1, j2) {
 			t.Errorf("Got %q, want %q", c.got, c.want)
 		}
 	}

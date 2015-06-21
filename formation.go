@@ -41,7 +41,7 @@ type Template struct {
 	Conditions Conditions
 	Outputs    Outputs
 	Parameters Parameters
-	Resources  Resources
+	Resources  map[string]Resource
 }
 
 type Conditions map[string]Condition
@@ -50,8 +50,11 @@ type Outputs map[string]Output
 type Output map[string]interface{}
 type Parameters map[string]Parameter
 type Parameter map[string]interface{}
-type Resources map[string]Resource
-type Resource map[string]interface{}
+
+type Resource struct {
+	Type       string
+	Properties map[string]interface{}
+}
 
 type InternetGateway struct {
 }
