@@ -100,11 +100,41 @@ fs.writeFileSync('httpd-sim.json', JSON.stringify(obj, null, 2))
 
 // Verify Simulated JSON
 
-s  = obj["Resources"]["Service"]
-td = obj["Resources"]["TaskDefinition"]
+s = obj["Resources"]["Service"]["Properties"]
 
-assert.equal(s["Properties"]["Cluster"], "convox-charlie")
-assert.equal(s["Properties"]["DesiredCount"], "1")
-assert(s["Properties"]["LoadBalancers"])
-assert.deepEqual(s["Properties"]["Role"], {"Ref": "ServiceRole"}) // TODO: Verify ServiceRole Properties
-assert.deepEqual(s["Properties"]["TaskDefinition"], {"Ref": "TaskDefinition"})
+assert.equal(s["Cluster"], "convox-charlie")
+assert.equal(s["DesiredCount"], "1")
+assert(s["LoadBalancers"])
+assert.deepEqual(s["Role"], {"Ref": "ServiceRole"}) // TODO: Verify ServiceRole Properties
+assert.deepEqual(s["TaskDefinition"], {"Ref": "TaskDefinition"})
+
+td = obj["Resources"]["TaskDefinition"]["Properties"]
+
+assert(td["Tasks"])
+
+t0 = td["Tasks"][0]
+t1 = td["Tasks"][1]
+
+assert.equal(t0["CPU"], "200")
+assert.equal(t0["Command"], "")
+assert.deepEqual(t0["Environment"], null)
+assert.equal(t0["Image"], "docker.io/httpd")
+assert.equal(t0["Key"], "")
+assert.deepEqual(t0["Links"], [])
+assert.equal(t0["Memory"], "300")
+assert.equal(t0["Name"], "web")
+assert.deepEqual(t0["PortMappings"], ["53081:80"])
+assert.deepEqual(t0["Services"], [])
+assert.deepEqual(t0["Volumes"], [])
+
+assert.equal(t1["CPU"], "20")
+assert.equal(t1["Command"], null)
+assert.deepEqual(t1["Environment"], { "AWS_ACCESS": { "Ref": "LogsAccess" }, "AWS_REGION": "us-east-1", "AWS_SECRET": { "Fn::GetAtt": [ "LogsAccess", "SecretAccessKey" ] }, "CONTAINERS": "web", "KINESIS": { "Ref": "Kinesis" } })
+assert.equal(t1["Image"], "index.docker.io/convox/logs")
+assert.equal(t1["Key"], null)
+assert.deepEqual(t1["Links"], ["web:web"])
+assert.equal(t1["Memory"], "64")
+assert.equal(t1["Name"], "convox-logs")
+assert.deepEqual(t1["PortMappings"], null)
+assert.deepEqual(t1["Services"], null)
+assert.deepEqual(t1["Volumes"], ["/var/run/docker.sock:/var/run/docker.sock"])
