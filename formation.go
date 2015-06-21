@@ -236,10 +236,13 @@ type Template struct {
   Conditions               Conditions
 	Description              string
 	Resources                Resources
+  Parameters               Parameters
 }
 
 type Conditions map[string]Condition
 type Condition map[string]interface{}
+type Parameters map[string]Parameter
+type Parameter map[string]interface{}
 
 type InternetGateway struct {
 }

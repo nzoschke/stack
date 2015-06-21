@@ -42,6 +42,30 @@ func TestConditions(t *testing.T) {
   }
 }
 
+func TestParameters(t *testing.T) {
+  tmpl := _template(t, nil)
+  p := tmpl.Parameters
+
+  var keys sort.StringSlice = make([]string, 0, len(p))
+
+  for k := range p {
+    keys = append(keys, k)
+  }
+  keys.Sort()
+
+  cases := []struct {
+    got, want interface{}
+  }{
+    {[]string(keys), []string{"Cluster", "Environment", "Kernel", "Key", "Release", "Repository", "Subnets", "VPC"}},
+  }
+
+  for _, c := range cases {
+    if !reflect.DeepEqual(c.got, c.want) {
+      t.Errorf("TestParameters got %q, want %q", c.got, c.want)
+    }
+  }
+}
+
 func TestResources(t *testing.T) {
 	tmpl := _template(t, nil)
 	resources := tmpl.Resources
