@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
-var fs = require('fs');
-var traverse = require('traverse');
+var assert = require('assert')
+var fs = require('fs')
+var traverse = require('traverse')
 
 var obj = JSON.parse(fs.readFileSync('httpd.json', 'utf8'));
 
@@ -80,5 +81,30 @@ traverse(obj).forEach(function (x) {
   }
 })
 
+// Evaluate Fn::Join
+
+traverse(obj).forEach(function (x) {
+  if (typeof(x) == 'object' && Object.keys(x).length == 1 && Object.keys(x)[0] == "Fn::Join") {
+    c = x["Fn::Join"][0]
+    a = x["Fn::Join"][1]
+
+    if (a.every(function(e, i, a) { return typeof e == 'string' }))
+      this.update(a.join(c))
+  }
+})
+
+// Write Simulated JSON
+
 // console.log(JSON.stringify(obj, null, 2))
 fs.writeFileSync('httpd-sim.json', JSON.stringify(obj, null, 2))
+
+// Verify Simulated JSON
+
+s  = obj["Resources"]["Service"]
+td = obj["Resources"]["TaskDefinition"]
+
+assert.equal(s["Properties"]["Cluster"], "convox-charlie")
+assert.equal(s["Properties"]["DesiredCount"], "1")
+assert(s["Properties"]["LoadBalancers"])
+assert.deepEqual(s["Properties"]["Role"], {"Ref": "ServiceRole"}) // TODO: Verify ServiceRole Properties
+assert.deepEqual(s["Properties"]["TaskDefinition"], {"Ref": "TaskDefinition"})
