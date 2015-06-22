@@ -614,7 +614,7 @@
             "MountPoints": [
               {
                 "ContainerPath": "/var/run/docker.sock",
-                "SourceVolume": "Docker"
+                "SourceVolume": "convox-logs-1-0"
               }
             ],
             "Name": "convox-logs"
@@ -625,7 +625,7 @@
             "Host": {
               "SourcePath": "/var/run/docker.sock"
             },
-            "Name": "Docker"
+            "Name": "convox-logs-1-0"
           }
         ]
       }

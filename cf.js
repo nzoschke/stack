@@ -132,7 +132,7 @@ td = obj["Resources"]["TaskDefinition"]["Properties"]
 
 v = td["Volumes"]
 
-assert.deepEqual(v[0], { "Name": "Docker", "Host": { "SourcePath": "/var/run/docker.sock" } })
+assert.deepEqual(v[0], { "Name": "convox-logs-1-0", "Host": { "SourcePath": "/var/run/docker.sock" } })
 
 t0 = td["ContainerDefinitions"][0]
 t1 = td["ContainerDefinitions"][1]
@@ -167,7 +167,7 @@ assert(!t1.hasOwnProperty("Essential"))
 assert.equal(t1["Image"], "index.docker.io/convox/logs")
 assert.deepEqual(t1["Links"], ["web:web"])
 assert.equal(t1["Memory"], "64")
-assert.deepEqual(t1["MountPoints"], [ { "ContainerPath": "/var/run/docker.sock", "SourceVolume": "Docker" } ])
+assert.deepEqual(t1["MountPoints"], [ { "ContainerPath": "/var/run/docker.sock", "SourceVolume": "convox-logs-1-0" } ])
 assert.equal(t1["Name"], "convox-logs")
 assert(!t1.hasOwnProperty("PortMappings"))
 
