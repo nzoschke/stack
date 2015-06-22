@@ -21,7 +21,7 @@ var USER_PARAMS = {
 var PSEUDO_PARAMS = {
   "AWS::AccountId":        "123456789012",
   "AWS::NotificationARNs": ["arn1", "arn2"],
-  "AWS::NoValue":          "",
+  // "AWS::NoValue":          "",
   "AWS::Region":           "us-east-1",
   "AWS::StackId":          "arn:aws:cloudformation:us-east-1:123456789012:stack/teststack/51af3dc0-da77-11e4-872e-1234567db123",
   "AWS::StackName":        "httpd-" + parseInt(new Date() / 1000),
@@ -112,31 +112,47 @@ assert.deepEqual(s["TaskDefinition"], {"Ref": "TaskDefinition"})
 
 td = obj["Resources"]["TaskDefinition"]["Properties"]
 
-assert(td["Tasks"])
+v = td["Volumes"]
 
-t0 = td["Tasks"][0]
-t1 = td["Tasks"][1]
+assert.deepEqual(v[0], { "Name": "Docker", "Host": { "SourcePath": "/var/run/docker.sock" } })
 
-assert.equal(t0["CPU"], "200")
-assert.equal(t0["Command"], "")
+t0 = td["ContainerDefinitions"][0]
+t1 = td["ContainerDefinitions"][1]
+
+assert.deepEqual(t0["Command"], { "Ref": "AWS::NoValue" })
+assert.equal(t0["Cpu"], "200")
+assert.equal(t0["Entrypoint"], null)
 assert.deepEqual(t0["Environment"], null)
+assert.equal(t0["Essential"], null)
 assert.equal(t0["Image"], "docker.io/httpd")
-assert.equal(t0["Key"], "")
 assert.deepEqual(t0["Links"], [])
 assert.equal(t0["Memory"], "300")
+assert.deepEqual(t0["MountPoints"], null)
 assert.equal(t0["Name"], "web")
-assert.deepEqual(t0["PortMappings"], ["53081:80"])
-assert.deepEqual(t0["Services"], [])
-assert.deepEqual(t0["Volumes"], [])
+assert.deepEqual(t0["PortMappings"], [ { "HostPort": 53081, "ContainerPort": 80 } ])
 
-assert.equal(t1["CPU"], "20")
+assert.deepEqual(t0["Volumes"], null)
+assert.equal(t0["Key"], null)
+assert.deepEqual(t0["Services"], null)
+
 assert.equal(t1["Command"], null)
-assert.deepEqual(t1["Environment"], { "AWS_ACCESS": { "Ref": "LogsAccess" }, "AWS_REGION": "us-east-1", "AWS_SECRET": { "Fn::GetAtt": [ "LogsAccess", "SecretAccessKey" ] }, "CONTAINERS": "web", "KINESIS": { "Ref": "Kinesis" } })
+assert.equal(t1["Cpu"], "20")
+assert.equal(t1["Entrypoint"], null)
+assert.deepEqual(t1["Environment"], [
+  { "Name": "AWS_REGION", "Value": "us-east-1" },
+  { "Name": "AWS_ACCESS", "Value": { "Ref": "LogsAccess" } },
+  { "Name": "AWS_SECRET", "Value": { "Fn::GetAtt": [ "LogsAccess", "SecretAccessKey" ] } },
+  { "Name": "KINESIS", "Value": { "Ref": "Kinesis" } },
+  { "Name": "CONTAINERS", "Value": "web" },
+])
+assert.equal(t1["Essential"], null)
 assert.equal(t1["Image"], "index.docker.io/convox/logs")
-assert.equal(t1["Key"], null)
 assert.deepEqual(t1["Links"], ["web:web"])
 assert.equal(t1["Memory"], "64")
+assert.deepEqual(t1["MountPoints"], [ { "ContainerPath": "/var/run/docker.sock", "SourceVolume": "Docker" } ])
 assert.equal(t1["Name"], "convox-logs")
 assert.deepEqual(t1["PortMappings"], null)
+
+assert.deepEqual(t1["Volumes"], null)
+assert.equal(t1["Key"], null)
 assert.deepEqual(t1["Services"], null)
-assert.deepEqual(t1["Volumes"], ["/var/run/docker.sock:/var/run/docker.sock"])

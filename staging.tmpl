@@ -70,6 +70,9 @@
 
 {{ define "process-conditions" }}
   {{ range $k, $e := . }}
+    "Blank{{ upper $k }}Command": { "Fn::Equals": [ { "Ref": "{{ upper $k }}Command" }, "" ] },
+  {{ end }}
+  {{ range $k, $e := . }}
     "Blank{{ upper $k }}Service": { "Fn::Equals": [ { "Ref": "{{ upper $k }}Service" }, "" ] },
   {{ end }}
 {{ end }}
@@ -140,31 +143,36 @@
       }
     },
     "TaskDefinition": {
-      "Type": "Custom::ECSTaskDefinition",
-      "Version": "1.0",
+      "Type": "AWS::ECS::TaskDefinition",
       "Properties": {
-        "ServiceToken": { "Ref": "Kernel" },
-        "Name": { "Ref": "AWS::StackName" },
-        "Release": { "Ref": "Release" },
-        "Environment": { "Ref": "Environment" },
-        "Tasks": [
+        "ContainerDefinitions": [
           {{ tasks . }},
           {
             "Name": "convox-logs",
+            "MountPoints": [
+              {
+                "SourceVolume": "Docker",
+                "ContainerPath": "/var/run/docker.sock"
+              }
+            ],
             "Image": "index.docker.io/convox/logs",
-            "Environment": {
-              "AWS_REGION": { "Ref": "AWS::Region" },
-              "AWS_ACCESS": { "Ref": "LogsAccess" },
-              "AWS_SECRET": { "Fn::GetAtt": [ "LogsAccess", "SecretAccessKey" ] },
-              "KINESIS": { "Ref": "Kinesis" },
-              "CONTAINERS": { "Fn::Join": [ ",", [ {{ names . }} ] ] }
-            },
-            "CPU": "20",
+            "Environment": [
+              { "Name": "AWS_REGION", "Value": { "Ref": "AWS::Region" } },
+              { "Name": "AWS_ACCESS", "Value": { "Ref": "LogsAccess" } },
+              { "Name": "AWS_SECRET", "Value": { "Fn::GetAtt": [ "LogsAccess", "SecretAccessKey" ] } },
+              { "Name": "KINESIS",    "Value": { "Ref": "Kinesis" } },
+              { "Name": "CONTAINERS", "Value": { "Fn::Join": [ ",", [ {{ names . }} ] ] } }
+            ],
+            "Cpu": "20",
             "Memory": "64",
-            "Links": [ {{ links . }} ],
-            "Volumes": [
-              "/var/run/docker.sock:/var/run/docker.sock"
-            ]
+            "Links": [ {{ links . }} ]
+          }
+
+        ],
+        "Volumes": [
+          {
+            "Name": "Docker",
+            "Host": { "SourcePath": "/var/run/docker.sock" }
           }
         ]
       }

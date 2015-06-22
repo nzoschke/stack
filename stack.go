@@ -274,7 +274,7 @@ func templateHelpers() template.FuncMap {
 						continue
 					}
 
-					mappings = append(mappings, fmt.Sprintf(`{ "Fn::Join": [ ":", [ { "Ref": "%sPort%sHost" }, "%s" ] ] }`, upperName(ps), parts[0], parts[1]))
+					mappings = append(mappings, fmt.Sprintf(`{ "HostPort": { "Ref": "%sPort%sHost" }, "ContainerPort": "%s" }`, upperName(ps), parts[0], parts[1]))
 				}
 
 				links := make([]string, len(entry.Links))
@@ -305,15 +305,12 @@ func templateHelpers() template.FuncMap {
         {
           "Name": "%s",
           "Image": { "Ref": "%sImage" },
-          "Command": { "Ref": "%sCommand" },
-          "Key": { "Ref": "Key" },
-          "CPU": "200",
+          "Command": { "Fn::If": [ "Blank%sCommand", { "Ref": "AWS::NoValue" }, { "Ref": "%sCommand" } ] },
+          "Cpu": "200",
           "Memory": "300",
           "Links": [ %s ],
-          "Volumes": [ %s ],
-          "Services": [ %s ],
           "PortMappings": [ %s ]
-        }, { "Ref" : "AWS::NoValue" } ] }`, upperName(ps), ps, upperName(ps), upperName(ps), strings.Join(links, ","), strings.Join(volumes, ","), strings.Join(services, ","), strings.Join(mappings, ",")))
+        }, { "Ref" : "AWS::NoValue" } ] }`, upperName(ps), ps, upperName(ps), upperName(ps), upperName(ps), strings.Join(links, ","), strings.Join(mappings, ",")))
 			}
 
 			return template.HTML(strings.Join(ls, ","))

@@ -10,6 +10,14 @@
         ""
       ]
     },
+    "BlankWebCommand": {
+      "Fn::Equals": [
+        {
+          "Ref": "WebCommand"
+        },
+        ""
+      ]
+    },
     "BlankWebService": {
       "Fn::Equals": [
         {
@@ -501,53 +509,39 @@
       }
     },
     "TaskDefinition": {
-      "Type": "Custom::ECSTaskDefinition",
+      "Type": "AWS::ECS::TaskDefinition",
       "Properties": {
-        "Environment": {
-          "Ref": "Environment"
-        },
-        "Name": {
-          "Ref": "AWS::StackName"
-        },
-        "Release": {
-          "Ref": "Release"
-        },
-        "ServiceToken": {
-          "Ref": "Kernel"
-        },
-        "Tasks": [
+        "ContainerDefinitions": [
           {
             "Fn::If": [
               "BlankWebService",
               {
-                "CPU": "200",
                 "Command": {
-                  "Ref": "WebCommand"
+                  "Fn::If": [
+                    "BlankWebCommand",
+                    {
+                      "Ref": "AWS::NoValue"
+                    },
+                    {
+                      "Ref": "WebCommand"
+                    }
+                  ]
                 },
+                "Cpu": "200",
                 "Image": {
                   "Ref": "WebImage"
-                },
-                "Key": {
-                  "Ref": "Key"
                 },
                 "Links": [],
                 "Memory": "300",
                 "Name": "web",
                 "PortMappings": [
                   {
-                    "Fn::Join": [
-                      ":",
-                      [
-                        {
-                          "Ref": "WebPort80Host"
-                        },
-                        "80"
-                      ]
-                    ]
+                    "ContainerPort": "80",
+                    "HostPort": {
+                      "Ref": "WebPort80Host"
+                    }
                   }
-                ],
-                "Services": [],
-                "Volumes": []
+                ]
               },
               {
                 "Ref": "AWS::NoValue"
@@ -555,40 +549,55 @@
             ]
           },
           {
-            "CPU": "20",
-            "Environment": {
-              "AWS_ACCESS": {
-                "Ref": "LogsAccess"
+            "Cpu": "20",
+            "Environment": [
+              {
+                "Name": "AWS_REGION",
+                "Value": {
+                  "Ref": "AWS::Region"
+                }
               },
-              "AWS_REGION": {
-                "Ref": "AWS::Region"
+              {
+                "Name": "AWS_ACCESS",
+                "Value": {
+                  "Ref": "LogsAccess"
+                }
               },
-              "AWS_SECRET": {
-                "Fn::GetAtt": [
-                  "LogsAccess",
-                  "SecretAccessKey"
-                ]
-              },
-              "CONTAINERS": {
-                "Fn::Join": [
-                  ",",
-                  [
-                    {
-                      "Fn::If": [
-                        "BlankWebService",
-                        "web",
-                        {
-                          "Ref": "AWS::NoValue"
-                        }
-                      ]
-                    }
+              {
+                "Name": "AWS_SECRET",
+                "Value": {
+                  "Fn::GetAtt": [
+                    "LogsAccess",
+                    "SecretAccessKey"
                   ]
-                ]
+                }
               },
-              "KINESIS": {
-                "Ref": "Kinesis"
+              {
+                "Name": "KINESIS",
+                "Value": {
+                  "Ref": "Kinesis"
+                }
+              },
+              {
+                "Name": "CONTAINERS",
+                "Value": {
+                  "Fn::Join": [
+                    ",",
+                    [
+                      {
+                        "Fn::If": [
+                          "BlankWebService",
+                          "web",
+                          {
+                            "Ref": "AWS::NoValue"
+                          }
+                        ]
+                      }
+                    ]
+                  ]
+                }
               }
-            },
+            ],
             "Image": "index.docker.io/convox/logs",
             "Links": [
               {
@@ -602,10 +611,21 @@
               }
             ],
             "Memory": "64",
-            "Name": "convox-logs",
-            "Volumes": [
-              "/var/run/docker.sock:/var/run/docker.sock"
-            ]
+            "MountPoints": [
+              {
+                "ContainerPath": "/var/run/docker.sock",
+                "SourceVolume": "Docker"
+              }
+            ],
+            "Name": "convox-logs"
+          }
+        ],
+        "Volumes": [
+          {
+            "Host": {
+              "SourcePath": "/var/run/docker.sock"
+            },
+            "Name": "Docker"
           }
         ]
       }
