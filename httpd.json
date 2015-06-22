@@ -415,7 +415,7 @@
       }
     },
     "Service": {
-      "Type": "Custom::ECSService",
+      "Type": "AWS::ECS::Service",
       "Properties": {
         "Cluster": {
           "Ref": "Cluster"
@@ -423,26 +423,15 @@
         "DesiredCount": "1",
         "LoadBalancers": [
           {
-            "Fn::Join": [
-              ":",
-              [
-                {
-                  "Ref": "Balancer"
-                },
-                "web",
-                "80"
-              ]
-            ]
+            "ContainerName": "web",
+            "ContainerPort": "80",
+            "LoadBalancerName": {
+              "Ref": "Balancer"
+            }
           }
         ],
-        "Name": {
-          "Ref": "AWS::StackName"
-        },
         "Role": {
           "Ref": "ServiceRole"
-        },
-        "ServiceToken": {
-          "Ref": "Kernel"
         },
         "TaskDefinition": {
           "Ref": "TaskDefinition"

@@ -243,7 +243,7 @@ func templateHelpers() template.FuncMap {
 						continue
 					}
 
-					ls = append(ls, fmt.Sprintf(`{ "Fn::Join": [ ":", [ { "Ref": "Balancer" }, "%s", "%s" ] ] }`, ps, parts[1]))
+					ls = append(ls, fmt.Sprintf(`{ "ContainerName": "%s", "ContainerPort": "%s", "LoadBalancerName": { "Ref": "Balancer" } }`, ps, parts[1]))
 				}
 			}
 

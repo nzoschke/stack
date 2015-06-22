@@ -170,13 +170,10 @@
       }
     },
     "Service": {
-      "Type": "Custom::ECSService",
-      "Version": "1.0",
+      "Type": "AWS::ECS::Service",
       "Properties": {
-        "ServiceToken": { "Ref": "Kernel" },
         "Cluster": { "Ref": "Cluster" },
         "DesiredCount": "1",
-        "Name": { "Ref": "AWS::StackName" },
         "TaskDefinition": { "Ref": "TaskDefinition" },
         "Role": { "Ref": "ServiceRole" },
         "LoadBalancers": [ {{ loadbalancers . }} ]

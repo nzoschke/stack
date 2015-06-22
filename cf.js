@@ -43,6 +43,7 @@ for (var key in obj["Parameters"]) {
 }
 
 // Evaluate all Parameter Refs
+
 traverse(obj).forEach(function (x) {
   if (typeof(x) == 'object' && Object.keys(x).length == 1 && Object.keys(x)[0] == "Ref") {
     if (PSEUDO_PARAMS.hasOwnProperty(x["Ref"]))
@@ -104,7 +105,8 @@ s = obj["Resources"]["Service"]["Properties"]
 
 assert.equal(s["Cluster"], "convox-charlie")
 assert.equal(s["DesiredCount"], "1")
-assert.deepEqual(s["LoadBalancers"], [ { "Fn::Join": [ ":", [ { "Ref": "Balancer" }, "web", "80" ] ] } ])
+assert.deepEqual(s["LoadBalancers"], [ { "ContainerName": "web", "ContainerPort": "80", "LoadBalancerName": { "Ref": "Balancer" } } ])
+assert.equal(s["Name"], null)
 assert.deepEqual(s["Role"], {"Ref": "ServiceRole"}) // TODO: Verify ServiceRole Properties
 assert.deepEqual(s["TaskDefinition"], {"Ref": "TaskDefinition"})
 
