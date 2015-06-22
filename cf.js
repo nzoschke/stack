@@ -21,7 +21,7 @@ var USER_PARAMS = {
 var PSEUDO_PARAMS = {
   "AWS::AccountId":        "123456789012",
   "AWS::NotificationARNs": ["arn1", "arn2"],
-  // "AWS::NoValue":          "",
+  "AWS::NoValue":          null,
   "AWS::Region":           "us-east-1",
   "AWS::StackId":          "arn:aws:cloudformation:us-east-1:123456789012:stack/teststack/51af3dc0-da77-11e4-872e-1234567db123",
   "AWS::StackName":        "httpd-" + parseInt(new Date() / 1000),
@@ -46,6 +46,9 @@ for (var key in obj["Parameters"]) {
 
 traverse(obj).forEach(function (x) {
   if (typeof(x) == 'object' && Object.keys(x).length == 1 && Object.keys(x)[0] == "Ref") {
+    if (x["Ref"] == "AWS::NoValue")
+      return
+
     if (PSEUDO_PARAMS.hasOwnProperty(x["Ref"]))
       this.update(PSEUDO_PARAMS[x["Ref"]])
 
@@ -94,6 +97,21 @@ traverse(obj).forEach(function (x) {
   }
 })
 
+// Evaluate AWS::NoValue
+
+traverse(obj).forEach(function (x) {
+  if (typeof(x) == 'object' && Object.keys(x).length == 1 && x["Ref"] == "AWS::NoValue") {
+    p = this.parent.node
+
+    for (var key in p) {
+      y = p[key]
+
+      if (typeof(y) == 'object' && Object.keys(y).length == 1 && y["Ref"] == "AWS::NoValue")
+        delete p[key]
+    }
+  }
+})
+
 // Write Simulated JSON
 
 // console.log(JSON.stringify(obj, null, 2))
@@ -119,25 +137,25 @@ assert.deepEqual(v[0], { "Name": "Docker", "Host": { "SourcePath": "/var/run/doc
 t0 = td["ContainerDefinitions"][0]
 t1 = td["ContainerDefinitions"][1]
 
-assert.deepEqual(t0["Command"], { "Ref": "AWS::NoValue" })
+assert(!t0.hasOwnProperty("Command"))
 assert.equal(t0["Cpu"], "200")
-assert.equal(t0["Entrypoint"], null)
-assert.deepEqual(t0["Environment"], null)
-assert.equal(t0["Essential"], null)
+assert(!t0.hasOwnProperty("Entrypoint"))
+assert(!t0.hasOwnProperty("Environment"))
+assert(!t0.hasOwnProperty("Essential"))
 assert.equal(t0["Image"], "docker.io/httpd")
 assert.deepEqual(t0["Links"], [])
 assert.equal(t0["Memory"], "300")
-assert.deepEqual(t0["MountPoints"], null)
+assert(!t0.hasOwnProperty("MountPoints"))
 assert.equal(t0["Name"], "web")
 assert.deepEqual(t0["PortMappings"], [ { "HostPort": 53081, "ContainerPort": 80 } ])
 
-assert.deepEqual(t0["Volumes"], null)
-assert.equal(t0["Key"], null)
-assert.deepEqual(t0["Services"], null)
+assert(!t0.hasOwnProperty("Volumes"))
+assert(!t0.hasOwnProperty("Key"))
+assert(!t0.hasOwnProperty("Services"))
 
-assert.equal(t1["Command"], null)
+assert(!t1.hasOwnProperty("Command"))
 assert.equal(t1["Cpu"], "20")
-assert.equal(t1["Entrypoint"], null)
+assert(!t1.hasOwnProperty("Entrypoint"))
 assert.deepEqual(t1["Environment"], [
   { "Name": "AWS_REGION", "Value": "us-east-1" },
   { "Name": "AWS_ACCESS", "Value": { "Ref": "LogsAccess" } },
@@ -145,14 +163,14 @@ assert.deepEqual(t1["Environment"], [
   { "Name": "KINESIS", "Value": { "Ref": "Kinesis" } },
   { "Name": "CONTAINERS", "Value": "web" },
 ])
-assert.equal(t1["Essential"], null)
+assert(!t1.hasOwnProperty("Essential"))
 assert.equal(t1["Image"], "index.docker.io/convox/logs")
 assert.deepEqual(t1["Links"], ["web:web"])
 assert.equal(t1["Memory"], "64")
 assert.deepEqual(t1["MountPoints"], [ { "ContainerPath": "/var/run/docker.sock", "SourceVolume": "Docker" } ])
 assert.equal(t1["Name"], "convox-logs")
-assert.deepEqual(t1["PortMappings"], null)
+assert(!t1.hasOwnProperty("PortMappings"))
 
-assert.deepEqual(t1["Volumes"], null)
-assert.equal(t1["Key"], null)
-assert.deepEqual(t1["Services"], null)
+assert(!t1.hasOwnProperty("Volumes"))
+assert(!t1.hasOwnProperty("Key"))
+assert(!t1.hasOwnProperty("Services"))
